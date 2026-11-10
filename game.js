@@ -1,13 +1,17 @@
 // THE LAST LAMP — self-contained first-person temple mystery.
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 const $=id=>document.getElementById(id);
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x101715);scene.fog=new THREE.FogExp2(0x101715,.027);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x111916);scene.fog=new THREE.FogExp2(0x18211e,.033);
 const camera=new THREE.PerspectiveCamera(73,innerWidth/innerHeight,.08,90);camera.position.set(0,1.65,15.1);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;document.body.prepend(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0x9ca99c,0x241d16,1.05));const moon=new THREE.DirectionalLight(0xb7cbbd,1.15);moon.position.set(-5,14,8);moon.castShadow=true;moon.shadow.mapSize.set(1024,1024);moon.shadow.camera.left=-22;moon.shadow.camera.right=22;moon.shadow.camera.top=24;moon.shadow.camera.bottom=-24;scene.add(moon);
 const lantern=new THREE.PointLight(0xffa844,1.7,8,2);lantern.position.set(.22,-.25,-.25);camera.add(lantern);scene.add(camera);
 const gold=new THREE.MeshStandardMaterial({color:0x9a7137,metalness:.7,roughness:.34}),stone=new THREE.MeshStandardMaterial({color:0x5c5547,roughness:.92}),dark=new THREE.MeshStandardMaterial({color:0x34362f,roughness:.94}),red=new THREE.MeshStandardMaterial({color:0x8c4334,roughness:.8}),floorMat=new THREE.MeshStandardMaterial({color:0x363a34,roughness:.83});
 const colliders=[],interactables=[],animatables=[];
+const dustCount=520,dustPositions=new Float32Array(dustCount*3),dustDrift=[];
+for(let i=0;i<dustCount;i++){dustPositions[i*3]=(Math.random()-.5)*27;dustPositions[i*3+1]=.2+Math.random()*3.5;dustPositions[i*3+2]=(Math.random()-.5)*33;dustDrift.push(.12+Math.random()*.24);}
+const dustGeometry=new THREE.BufferGeometry();dustGeometry.setAttribute('position',new THREE.BufferAttribute(dustPositions,3));
+const dust=new THREE.Points(dustGeometry,new THREE.PointsMaterial({color:0xb8b79c,size:.045,transparent:true,opacity:.28,depthWrite:false,sizeAttenuation:true}));scene.add(dust);
 function box(name,x,y,z,sx,sy,sz,mat,collision=true){const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat);m.name=name;m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);if(collision)colliders.push({x,z,hx:sx/2,hz:sz/2,bottom:y-sy/2});return m;}
 function cyl(x,y,z,rt,rb,h,mat,n=12){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n),mat);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m;}
 function light(x,y,z,color,intensity,range){const l=new THREE.PointLight(color,intensity,range,2);l.position.set(x,y,z);scene.add(l);return l;}
@@ -22,13 +26,22 @@ for(const x of [-5.4,5.4])for(const z of [-14,-8,-2,4,10,15]){cyl(x,.48,z,.7,.76
 for(const z of [-15,-10,-4,2,8,14])for(const x of [-14.45,14.45]){box('pilaster',x,2.1,z,.35,4.15,.42,dark,false);box('pilaster cap',x,4.25,z,.58,.24,.62,gold,false);}
 box('vermilion frieze',0,4.12,-17.57,28,.15,.08,red,false);
 // Rows of brass lamps create pools of amber light.
-for(const z of [-13,-5,3,11])for(const x of [-10.2,10.2]){cyl(x,3.05,z,.34,.18,.13,gold,10);cyl(x,3.2,z,.07,.07,.22,gold,8);const flame=new THREE.Mesh(new THREE.SphereGeometry(.11,8,8),new THREE.MeshBasicMaterial({color:0xffad43}));flame.position.set(x,3.35,z);scene.add(flame);const l=light(x,3.25,z,0xff9638,.8,5);animatables.push({type:'light',obj:l,base:.8,seed:Math.random()*7});}
-for(let z=-16;z<=16;z+=2){const m=new THREE.Mesh(new THREE.BoxGeometry(2.5,.025,1.8),new THREE.MeshStandardMaterial({color:z%4===0?0x4a4031:0x3c4039,roughness:.7}));m.position.set(0,.015,z);m.receiveShadow=true;scene.add(m);}
+for(const z of [-13,-5,3,11])for(const x of [-10.2,10.2]){cyl(x,3.05,z,.34,.18,.13,gold,10);cyl(x,3.2,z,.07,.07,.22,gold,8);const flame=new THREE.Mesh(new THREE.SphereGeometry(.11,8,8),new THREE.MeshBasicMaterial({color:0xffad43}));flame.position.set(x,3.35,z);scene.add(flame);const l=light(x,3.25,z,0xff9638,.8,5);animatables.push({type:'light',obj:l,base:.8,seed:Math.random()*7},{type:'flame',obj:flame,seed:Math.random()*7});}
+for(let z=-16;z<=16;z+=2.5)for(let x=-13.75;x<=13.75;x+=2.5){const tone=((Math.round((z+16)/2.5)+Math.round((x+13.75)/2.5))%4);const m=new THREE.Mesh(new THREE.BoxGeometry(2.46,.035,2.46),new THREE.MeshStandardMaterial({color:[0x47483f,0x3c403a,0x4a4438,0x383d39][tone],roughness:.88}));m.position.set(x,.015,z);m.receiveShadow=true;scene.add(m);}
 cyl(0,.04,-1,2.05,2.05,.06,gold,32);cyl(0,.08,-1,1.75,1.75,.04,stone,32);for(let i=0;i<16;i++){const a=i*Math.PI/8,m=box('sunburst',Math.sin(a)*1.24,.11,-1+Math.cos(a)*1.24,.18,.035,.8,gold,false);m.rotation.y=-a;}
 box('threshold',0,.02,17.6,5,.16,.7,gold,false);for(let i=0;i<5;i++){const w=4.5-i*.6;box('gopuram relief',0,5.1+i*.45,-17.35,w,.45,.45,i%2?red:gold,false);for(let j=0;j<5-i;j++)cyl((j-(4-i)/2)*.7,5.28+i*.45,-17.04,.12,.17,.22,i%2?gold:red,8);}
 // Door frames and simple wall niches.
 for(const [x,z]of[[-7.55,-6],[7.55,9]]){for(const dz of[-2.7,2.7])box('door jamb',x,1.5,z+dz,.55,3,.55,stone,false);box('door lintel',x,3.15,z,.65,.45,6,gold,false);}
 for(const [x,z]of[[-13.8,-13.7],[-13.8,4],[13.8,-13.4],[13.8,-3]]){box('wall niche',x,2.25,z,.08,1.4,1.3,dark,false);cyl(x+(x<0?.08:-.08),2.15,z,.22,.3,.22,gold,10);}
+// Centuries of monsoon water, soot, and offerings break up the bare stone.
+const waterMat=new THREE.MeshStandardMaterial({color:0x263936,metalness:.28,roughness:.2,transparent:true,opacity:.48,depthWrite:false});
+for(const [x,z,sx,sz]of[[-2,-8,2.2,1.2],[3,5,1.8,.85],[-10,1,1.3,1.1],[9,-4,1.6,.7],[0,13,2,.75]]){const wet=new THREE.Mesh(new THREE.CircleGeometry(1,24),waterMat);wet.rotation.x=-Math.PI/2;wet.position.set(x,.043,z);wet.scale.set(sx,sz,1);scene.add(wet);}
+const mossMat=new THREE.MeshStandardMaterial({color:0x26392c,roughness:1});
+for(const side of[-1,1])for(const z of[-15,-9,-3,3,9,15]){const points=[new THREE.Vector3(side*14.35,.04,z),new THREE.Vector3(side*14.1,.8,z+.35),new THREE.Vector3(side*14.32,1.45,z+.12),new THREE.Vector3(side*14.1,2.25,z+.6),new THREE.Vector3(side*14.35,3.35,z+.28)];const vine=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),18,.035,5,false),mossMat);scene.add(vine);}
+const clayMat=new THREE.MeshStandardMaterial({color:0x603a2d,roughness:.94});const potShape=[new THREE.Vector2(0,0),new THREE.Vector2(.16,.02),new THREE.Vector2(.28,.2),new THREE.Vector2(.32,.43),new THREE.Vector2(.22,.62),new THREE.Vector2(.16,.64),new THREE.Vector2(.16,.72)];
+for(const [x,z,r]of[[-12.6,-15,.75],[12.8,-11,-.4],[-12.7,1,.25],[12.5,15,.9],[-8.8,14,-.2],[8.8,-15,.45]]){const pot=new THREE.Mesh(new THREE.LatheGeometry(potShape,10),clayMat);pot.position.set(x,.04,z);pot.rotation.z=r;pot.scale.set(1,1,.86);pot.castShadow=true;scene.add(pot);cyl(x,.76,z,.15,.15,.035,gold,8);}
+// Torn prayer cloth and suspended bells stir in the draft.
+for(const [x,z]of[[-3,-7],[3,2],[-3,10]]){const bar=cyl(x,4.35,z,.035,.035,2.2,gold,7);bar.rotation.z=Math.PI/2;const cloth=new THREE.Mesh(new THREE.PlaneGeometry(.72,1.35),new THREE.MeshStandardMaterial({color:0x63292b,roughness:.9,side:THREE.DoubleSide,transparent:true,opacity:.82}));cloth.position.set(x,3.62,z);cloth.rotation.y=.12;scene.add(cloth);animatables.push({type:'cloth',obj:cloth,seed:Math.random()*5});cyl(x+.72,4.12,z,.13,.09,.22,gold,8);}
 function altar(x,z){box('altar base',x,.38,z,3.8,.7,2.2,dark);box('altar rim',x,.78,z,4,.12,2.35,gold,false);box('sanctum slab',x,1.15,z,2.7,.65,1.35,stone);box('altar crown',x,1.55,z,3.1,.16,1.6,gold,false);box('offering cloth',x,1.65,z,.95,.08,.92,red,false);for(const dx of[-1.35,1.35]){cyl(x+dx,1.13,z,.16,.19,.7,gold,10);cyl(x+dx,1.5,z,.22,.22,.08,gold,10);}cyl(x,1.88,z,.2,.29,.45,gold,10);const f=new THREE.Mesh(new THREE.SphereGeometry(.14,10,8),new THREE.MeshBasicMaterial({color:0xffae4d}));f.position.set(x,2.25,z);scene.add(f);light(x,2.4,z,0xffa43d,1.25,8);}
 altar(0,-14.2);
 // Bell shrine in the south hall.
@@ -47,24 +60,28 @@ evidence('anklet','Valli’s anklet','A copper anklet, bent as if torn away. On 
 const clapper=box('bell clapper',0,2.45,12.5,.12,.4,.12,red,false);
 evidence('witness','A child’s testimony','A charcoal note folded into the bell rope: “She rang until the water turned. When the sun came, she would show everyone the deed. They barred the doors and left her inside.” The bell was the warning; the sun was the promise.',[.5,2.4,12.2],clapper,[.5,3.2,12.2]);
 interactables.push({type:'altar',position:new THREE.Vector3(0,1.1,-12.1)},{type:'bell',position:new THREE.Vector3(.5,1.1,12.2)});
-// Valli: a veiled, blood-marked silhouette made from layered cloth and shadow.
+// Valli: a waterlogged, floating silhouette with a split veil and a corpse-pale face.
 const ghost=new THREE.Group();ghost.position.set(0,.1,-16.2);ghost.visible=false;scene.add(ghost);
-const sari=new THREE.MeshStandardMaterial({color:0x382a32,roughness:.72,transparent:true,opacity:.91,side:THREE.DoubleSide});
-const shawl=new THREE.MeshStandardMaterial({color:0x762f32,roughness:.66,transparent:true,opacity:.94,side:THREE.DoubleSide});
-const hairMat=new THREE.MeshStandardMaterial({color:0x111312,roughness:.88});
-const skin=new THREE.MeshStandardMaterial({color:0xbba18b,roughness:.72,emissive:0x291716,emissiveIntensity:.28});
-const skirt=new THREE.Mesh(new THREE.ConeGeometry(.68,1.52,10,1,true),sari);skirt.position.y=.9;ghost.add(skirt);
-const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.29,.62,5,9),sari);torso.position.y=1.7;ghost.add(torso);
-const veil=new THREE.Mesh(new THREE.PlaneGeometry(1.05,1.82),shawl);veil.position.set(.13,1.72,.24);veil.rotation.z=-.42;ghost.add(veil);
-const face=new THREE.Mesh(new THREE.SphereGeometry(.28,14,12),skin);face.position.set(0,2.38,.05);ghost.add(face);
-const hair=new THREE.Mesh(new THREE.SphereGeometry(.32,12,10),hairMat);hair.scale.set(1,1.2,.92);hair.position.set(0,2.51,-.015);ghost.add(hair);
-for(let i=0;i<5;i++){const lock=new THREE.Mesh(new THREE.CylinderGeometry(.025,.055,.95+i*.12,6),hairMat);lock.position.set((i-2)*.11,1.92,-.02);lock.rotation.z=(i-2)*.09;ghost.add(lock);}
-for(const x of[-.105,.105]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.035,8,7),new THREE.MeshBasicMaterial({color:0xffd4ac}));eye.position.set(x,2.4,.292);ghost.add(eye);}
-const blood=new THREE.MeshBasicMaterial({color:0x7d1719,transparent:true,opacity:.94,side:THREE.DoubleSide});
-for(const [x,y,len,rot]of[[-.17,2.31,.45,-.08],[-.04,2.28,.6,.04],[.14,2.32,.36,.15],[.21,2.23,.3,.04]]){const streak=new THREE.Mesh(new THREE.PlaneGeometry(.035,len),blood);streak.position.set(x,y,.294);streak.rotation.z=rot;ghost.add(streak);}
-for(const side of[-1,1]){const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.1,.66,4,7),sari);arm.position.set(side*.41,1.65,.03);arm.rotation.z=side*-.24;ghost.add(arm);}
-const aura=new THREE.PointLight(0xb94438,1.05,5);aura.position.set(0,1.7,.1);ghost.add(aura);
-const ghostHome=new THREE.Vector3(0,.1,-16.2);let ghostActive=false,ghostStun=0;
+const sari=new THREE.MeshStandardMaterial({color:0x211c23,roughness:.84,transparent:true,opacity:.96,side:THREE.DoubleSide});
+const shawl=new THREE.MeshStandardMaterial({color:0x65262b,roughness:.75,transparent:true,opacity:.96,side:THREE.DoubleSide});
+const hairMat=new THREE.MeshStandardMaterial({color:0x090b0a,roughness:.94});
+const skin=new THREE.MeshStandardMaterial({color:0xb6a18a,roughness:.84,emissive:0x35100d,emissiveIntensity:.4});
+const skirt=new THREE.Mesh(new THREE.ConeGeometry(.76,1.65,9,1,true),sari);skirt.position.y=.88;ghost.add(skirt);
+const shroud=new THREE.Mesh(new THREE.ConeGeometry(.55,1.25,8,1,true),shawl);shroud.position.set(0,1.02,.08);shroud.rotation.z=-.1;ghost.add(shroud);
+const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.3,.65,5,9),sari);torso.position.set(0,1.78,0);ghost.add(torso);
+const veil=new THREE.Mesh(new THREE.PlaneGeometry(1.2,2.1),shawl);veil.position.set(.1,1.67,.24);veil.rotation.z=-.37;ghost.add(veil);
+const face=new THREE.Mesh(new THREE.SphereGeometry(.275,14,12),skin);face.scale.set(.84,1.2,.7);face.position.set(0,2.42,.09);ghost.add(face);
+const hair=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10),hairMat);hair.scale.set(1,1.2,.95);hair.position.set(0,2.58,-.015);ghost.add(hair);
+for(let i=0;i<9;i++){const x=(i-4)*.105,len=.95+(i%3)*.29,lock=new THREE.Mesh(new THREE.CylinderGeometry(.025,.07,len,6),hairMat);lock.position.set(x,2.02-len*.14,.16+(i%2)*.025);lock.rotation.z=(i-4)*.055;ghost.add(lock);}
+const socketMat=new THREE.MeshBasicMaterial({color:0x090605}),eyeMat=new THREE.MeshBasicMaterial({color:0xff160b});
+for(const x of[-.112,.112]){const socket=new THREE.Mesh(new THREE.SphereGeometry(.077,9,8),socketMat);socket.scale.set(1,.7,.42);socket.position.set(x,2.44,.276);ghost.add(socket);const eye=new THREE.Mesh(new THREE.SphereGeometry(.027,8,7),eyeMat);eye.position.set(x,2.44,.307);ghost.add(eye);}
+const mouth=new THREE.Mesh(new THREE.SphereGeometry(.105,10,8),new THREE.MeshBasicMaterial({color:0x160706}));mouth.scale.set(.62,1.5,.4);mouth.position.set(0,2.16,.27);ghost.add(mouth);
+const blood=new THREE.MeshBasicMaterial({color:0x821714,transparent:true,opacity:.96,side:THREE.DoubleSide});
+for(const [x,y,len,rot]of[[-.2,2.31,.52,-.13],[-.08,2.26,.72,.03],[.1,2.29,.55,.13],[.2,2.32,.38,.2]]){const streak=new THREE.Mesh(new THREE.PlaneGeometry(.045,len),blood);streak.position.set(x,y,.286);streak.rotation.z=rot;ghost.add(streak);}
+const ghostArms=[];
+for(const side of[-1,1]){const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.085,.82,4,7),sari);arm.position.set(side*.43,1.46,.08);arm.rotation.z=side*-.48;ghost.add(arm);ghostArms.push(arm);const hand=new THREE.Mesh(new THREE.SphereGeometry(.12,8,7),skin);hand.scale.set(.72,1.35,.6);hand.position.set(side*.73,.94,.13);ghost.add(hand);for(let i=0;i<3;i++){const finger=new THREE.Mesh(new THREE.CylinderGeometry(.018,.03,.35,5),skin);finger.position.set(side*(.7+(i-1)*.075),.69,.15);finger.rotation.z=side*-.18;ghost.add(finger);}}
+const aura=new THREE.PointLight(0xe33327,1.35,6);aura.position.set(0,1.8,.1);ghost.add(aura);
+const ghostHome=new THREE.Vector3(0,.1,-16.2);let ghostActive=false,ghostStun=0,closeScared=false,scareCooldown=0,scareTimer=0;
 
 // State, journal and investigation logic.
 const found=new Set(),entries=[],keys={},player={x:0,z:15.1,yaw:0,pitch:0},moveInput={x:0,z:0};
@@ -78,12 +95,13 @@ function nearestTarget(){let best=null,dist=2.65;for(const it of interactables){
 function promptFor(it){if(!it)return '';if(it.type==='evidence')return `E · Record ${it.title}`;if(it.type==='altar')return found.size===3?'E · Set the signs at the altar':'The sanctum needs all three traces';if(it.type==='bell')return 'E · Ring the temple bell';return '';}
 function interact(){if(!started||won||puzzleOpen||!$('journal').classList.contains('hidden'))return;const target=nearestTarget();if(!target){tell('The stones offer no answer from here.',1700);return;}if(target.type==='evidence'){
  target.found=true;found.add(target.id);entries.push(target);target.marker.visible=false;tell(`Evidence recorded · ${target.title}`,2700);updateObjective();renderJournal();
- if(found.size===1){ghost.visible=true;ghostActive=true;tell('A bell rings somewhere in the dark. Something has noticed you.',3800);}
+ if(found.size===1){ghost.visible=true;ghostActive=true;tell('A bell rings somewhere in the dark. Something has noticed you.',3800);triggerScare();}
  if(found.size===3){tell('The three signs are clear. Find the altar in the north sanctum.',4000);playChime();}
  }else if(target.type==='altar'){if(found.size<3){tell('The sanctum is sealed. Three traces are missing.',2300);return;}puzzleOpen=true;sequence=[];$('sequence').textContent='Choose three signs';$('puzzleMessage').textContent='';$('puzzle').classList.remove('hidden');if(document.pointerLockElement)document.exitPointerLock();}
  else if(target.type==='bell'){playChime();bell.rotation.z=.12;setTimeout(()=>bell.rotation.z=0,420);tell('The bell answers. The echo rolls down the hill.',2200);}}
 
 let audio=null;function startAudio(){if(audio)return;try{const C=window.AudioContext||window.webkitAudioContext;audio=new C();const master=audio.createGain();master.gain.value=.035;master.connect(audio.destination);for(const [freq,vol]of[[55,.48],[82.4,.22]]){const o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=vol;o.connect(g).connect(master);o.start();}}catch(e){}}
+function triggerScare(force=false){if(scareCooldown>0&&!force)return false;scareCooldown=8;const el=$('scare');el.classList.remove('active');void el.offsetWidth;el.classList.add('active');clearTimeout(scareTimer);scareTimer=setTimeout(()=>el.classList.remove('active'),980);if(audio){const now=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type='sawtooth';o.frequency.setValueAtTime(128,now);o.frequency.exponentialRampToValueAtTime(38,now+.42);g.gain.setValueAtTime(.19,now);g.gain.exponentialRampToValueAtTime(.001,now+.46);o.connect(g).connect(audio.destination);o.start(now);o.stop(now+.48);}return true;}
 function playChime(){if(!audio)return;const o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.setValueAtTime(460,audio.currentTime);o.frequency.exponentialRampToValueAtTime(170,audio.currentTime+1.4);g.gain.setValueAtTime(.14,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+1.5);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+1.55);}
 function offerSigns(){if(sequence.length!==3){$('puzzleMessage').textContent='Offer exactly three signs.';return;}if(sequence.join(',')!=='rain,seed,sun'){$('puzzleMessage').textContent='The lamp gutters. The story is still out of order.';sequence=[];$('sequence').textContent='Choose three signs';return;}puzzleOpen=false;won=true;$('puzzle').classList.add('hidden');$('ending').classList.remove('hidden');ghostActive=false;ghost.visible=false;playChime();}
 document.querySelectorAll('.sym').forEach(button=>button.addEventListener('click',()=>{if(sequence.length>=3)return;sequence.push(button.dataset.sym);const labels={rain:'☔ Rain',seed:'❋ Seed',sun:'☼ Sun'};$('sequence').innerHTML=sequence.map(s=>`<span>${labels[s]}</span>`).join(' → ');}));
@@ -105,10 +123,13 @@ $('runBtn').addEventListener('pointerdown',e=>{keys.ShiftLeft=true;e.currentTarg
 function blocked(x,z){const r=.32;for(const c of colliders){if(c.bottom>1.8)continue;const qx=Math.max(c.x-c.hx,Math.min(x,c.x+c.hx)),qz=Math.max(c.z-c.hz,Math.min(z,c.z+c.hz));if((x-qx)**2+(z-qz)**2<r*r)return true;}return false;}
 function animate(now){requestAnimationFrame(animate);const dt=Math.min(.04,(now-lastTime)/1000),t=now*.001;lastTime=now;
  if(started&&!won&&$('journal').classList.contains('hidden')&&!puzzleOpen){let ix=moveInput.x,iz=moveInput.z;if(keys.KeyA||keys.ArrowLeft)ix-=1;if(keys.KeyD||keys.ArrowRight)ix+=1;if(keys.KeyW||keys.ArrowUp)iz-=1;if(keys.KeyS||keys.ArrowDown)iz+=1;const len=Math.hypot(ix,iz);if(len>1){ix/=len;iz/=len;}const speed=keys.ShiftLeft||keys.ShiftRight?4.65:2.55,fx=-Math.sin(player.yaw),fz=-Math.cos(player.yaw),rx=Math.cos(player.yaw),rz=-Math.sin(player.yaw),vx=(fx*(-iz)+rx*ix)*speed*dt,vz=(fz*(-iz)+rz*ix)*speed*dt;if(!blocked(player.x+vx,player.z))player.x+=vx;if(!blocked(player.x,player.z+vz))player.z+=vz;camera.position.set(player.x,1.65+Math.sin(t*8)*.008*(Math.abs(ix)+Math.abs(iz)),player.z);setView();const target=nearestTarget(),hint=$('hint');if(target){hint.textContent=promptFor(target);hint.classList.add('show');}else hint.classList.remove('show');
-  if(ghostActive){const dx=player.x-ghost.position.x,dz=player.z-ghost.position.z,d=Math.hypot(dx,dz);ghost.rotation.y=Math.atan2(dx,dz);if(d>1.55){ghost.position.x+=dx/d*.68*dt;ghost.position.z+=dz/d*.68*dt;ghost.position.y=.12+Math.sin(t*1.7)*.09;}else if(ghostStun<=0){ghostStun=1.6;player.x=0;player.z=15.1;camera.position.set(0,1.65,15.1);ghost.position.copy(ghostHome);tell('The temple rejects you. You wake at the threshold, still carrying the evidence.',3600);document.body.animate([{filter:'brightness(.2)'},{filter:'brightness(1)'}],500);} $('threat').classList.toggle('active',d<8);aura.intensity=.8+Math.sin(t*6)*.28;ghostStun=Math.max(0,ghostStun-dt);
+  if(ghostActive){const dx=player.x-ghost.position.x,dz=player.z-ghost.position.z,d=Math.hypot(dx,dz);ghost.rotation.y=Math.atan2(dx,dz);if(d<4&&!closeScared&&triggerScare())closeScared=true;if(ghostStun<=0&&d>1.55){const chaseSpeed=d<7?3.15:2.35;ghost.position.x+=dx/d*chaseSpeed*dt;ghost.position.z+=dz/d*chaseSpeed*dt;ghost.position.y=.12+Math.sin(t*2.6)*.13;ghost.rotation.z=Math.sin(t*5)*.045;ghostArms[0].rotation.z=-.48+Math.sin(t*7)*.08;ghostArms[1].rotation.z=.48+Math.sin(t*7+1)*.08;}else if(ghostStun<=0){triggerScare(true);ghostStun=2.2;player.x=0;player.z=15.1;camera.position.set(0,1.65,15.1);ghost.position.copy(ghostHome);ghost.rotation.z=0;tell('The temple rejects you. You wake at the threshold, still carrying the evidence.',3600);document.body.animate([{filter:'brightness(.12)'},{filter:'brightness(1)'}],650);} $('threat').classList.toggle('active',d<10);aura.intensity=.95+Math.sin(t*9)*.42;ghostStun=Math.max(0,ghostStun-dt);
   }else $('threat').classList.remove('active');
  }
- for(const a of animatables){if(a.type==='marker'){a.obj.position.y=a.baseY+Math.sin(t*2+a.seed)*.11;a.obj.rotation.y=t*.7;}else if(a.type==='light')a.obj.intensity=a.base*(.83+.17*Math.sin(t*5+a.seed)+.07*Math.sin(t*11+a.seed));}
+ scareCooldown=Math.max(0,scareCooldown-dt);
+  for(let i=0;i<dustCount;i++){const j=i*3;dustPositions[j+1]+=dustDrift[i]*dt;dustPositions[j]+=(Math.sin(t*.7+i)*.025)*dt;if(dustPositions[j+1]>4.2)dustPositions[j+1]=.15;}
+  dustGeometry.attributes.position.needsUpdate=true;
+  for(const a of animatables){if(a.type==='cloth'){a.obj.rotation.z=Math.sin(t*1.8+a.seed)*.055;a.obj.rotation.y=.12+Math.sin(t*1.2+a.seed)*.08;}else if(a.type==='flame'){const pulse=.85+Math.sin(t*10+a.seed)*.15;a.obj.scale.set(.8+pulse*.22,pulse,.8+pulse*.22);}}
+  for(const a of animatables){if(a.type==='marker'){a.obj.position.y=a.baseY+Math.sin(t*2+a.seed)*.11;a.obj.rotation.y=t*.7;}else if(a.type==='light'){const flicker=Math.random()<.018?.25+Math.random()*.35:1;a.obj.intensity=a.base*(.82+.14*Math.sin(t*5+a.seed)+.08*Math.sin(t*13+a.seed))*flicker;}}
  renderer.render(scene,camera);}
 requestAnimationFrame(animate);addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));});
-
